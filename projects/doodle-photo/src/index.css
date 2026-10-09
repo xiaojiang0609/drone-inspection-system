@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+.journal-button {
+  border: 1px solid #ded6ca;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: #70614f;
+  background: #faf7f1;
+  cursor: pointer;
+}
+.journal-button:hover { background: #efe7da; }
+.journal-button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Sticker collage studio: the canvas alone is the exported artwork. */
+.mode-switch { display:flex;justify-content:center;gap:8px;padding:24px 12px 0; }
+.mode-switch [aria-pressed=true] { background:#343638;color:#fffaf1;border-color:#343638; }
+.collage-studio { max-width:1440px;margin:auto;padding:36px 28px 60px;color:#493f34; }
+.collage-heading,.collage-row,.collage-board-bar { display:flex;align-items:center;justify-content:space-between;gap:10px; }
+.collage-heading { margin-bottom:16px;gap:24px; }
+.collage-heading h2 { font-size:28px;font-weight:600;letter-spacing:-.04em;margin:6px 0; }
+.collage-heading p,.collage-help { font-size:12px;line-height:1.7;color:#82776a; }
+.collage-eyebrow { font-size:10px;letter-spacing:.2em;color:#aa8460; }
+.collage-actions { display:flex;gap:8px;flex-wrap:wrap; }
+.collage-primary { background:#343638;color:#fffaf1;border-radius:12px;padding:12px 20px;font-size:14px;font-weight:600;min-height:44px; }
+.collage-primary:disabled { opacity:.45; }
+.collage-summary { font-size:13px;color:#746b60;margin:12px 0 24px; }
+.collage-workspace { display:grid;grid-template-columns:230px minmax(0,1fr) 230px;gap:24px;align-items:start; }
+.collage-panel { border:1px solid #e8dfd3;border-radius:16px;padding:16px;background:#fffdf8;min-width:0; }
+.collage-panel h3 { font-size:14px;font-weight:600;margin:0 0 12px; }
+.collage-panel label:not(.collage-upload) { display:grid;gap:8px;font-size:12px;margin:14px 0; }
+.collage-panel select,.collage-panel textarea { width:100%;min-width:0;border:1px solid #ded5c8;border-radius:8px;background:#fff;padding:10px;color:#65594b; }
+.collage-panel textarea { min-height:84px;resize:vertical; }
+.collage-panel input[type=range] { width:100%;accent-color:#86705a; }
+.collage-upload { position:relative;display:block;border:1px dashed #bbaa92;border-radius:10px;padding:12px;text-align:center;font-size:13px;cursor:pointer;margin:12px 0;min-height:44px; }
+.collage-upload input { position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer; }
+.collage-upload:focus-within { outline:2px solid #967c5c;outline-offset:2px; }
+.collage-source-list { display:grid;gap:12px;margin:20px 0; }
+.collage-source { padding:10px;border:1px solid #ebe4da;border-radius:10px;background:#fff; }
+.collage-source.is-selected { border-color:#a18a6e; }
+.collage-source-select { display:flex;align-items:center;gap:10px;width:100%;text-align:left;min-width:0; }
+.collage-source-select img { width:48px;height:48px;object-fit:cover;border-radius:8px; }
+.collage-source-select span { min-width:0; }
+.collage-source-select strong { display:block;font-size:12px;overflow-wrap:anywhere;font-weight:500; }
+.collage-source-select small { font-size:11px;color:#857765; }
+.collage-source-actions { display:flex;flex-wrap:wrap;gap:4px;margin-top:10px; }
+.collage-source-actions .journal-button { font-size:11px;padding:7px 8px;min-height:36px; }
+.collage-source-error { font-size:11px;color:#ab513c;margin-top:8px; }
+.collage-relayout { width:100%; }
+.collage-board { min-width:0; }
+.collage-board-bar { font-size:11px;color:#8b7d6c;margin:0 0 12px;flex-wrap:wrap; }
+.collage-board-bar>div { display:flex;gap:6px; }
+.collage-board-bar .journal-button { font-size:11px; }
+.collage-stage { position:relative;width:100%;max-width:620px;margin:auto;aspect-ratio:3/4;box-shadow:0 16px 40px #3b302421;background:#343638;touch-action:none; }
+.collage-stage canvas { display:block;width:100%;height:auto; }
+.collage-hit-layer { position:absolute;inset:0;touch-action:none; }
+.collage-element { position:absolute;background:transparent;border:1px solid transparent;cursor:grab;touch-action:none; }
+.collage-element.is-selected,.collage-element:focus-visible { outline:1.5px dashed #cfb489;outline-offset:4px; }
+.collage-element:active { cursor:grabbing; }
+.collage-resize { position:absolute;width:30px;height:30px;border-radius:50%;background:#fffdf8;border:1px solid #a18a6e;transform:translate(-50%,-50%);font-size:18px;touch-action:none; }
+.collage-background-drag { cursor:move; }
+.collage-inspector { border-top:1px solid #ebe2d7;margin-top:20px;padding-top:16px; }
+.collage-inspector .collage-row { flex-wrap:wrap;justify-content:flex-start; }
+.collage-tools hr { border-top:1px solid #ebe2d7;margin:20px 0; }
+.collage-notice { padding:12px;border:1px solid #dac6a9;background:#fff7e7;border-radius:10px;font-size:13px;margin:12px 0;overflow-wrap:anywhere; }
+.collage-notice .journal-button { margin-left:12px; }
+.collage-modal-backdrop { position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:#211d17b3;padding:20px; }
+.collage-modal { width:100%;max-width:900px;max-height:94vh;overflow-y:auto;background:#fffdf8;padding:24px;border-radius:18px; }
+.collage-modal header { margin-bottom:20px; }
+.collage-modal h2 { font-size:20px;font-weight:600; }
+.collage-modal p { font-size:13px;margin:8px 0;color:#7e7061; }
+@media(max-width:1050px) { .collage-workspace { grid-template-columns:190px minmax(0,1fr);gap:18px; }.collage-tools { grid-column:1/-1; }.collage-heading { align-items:flex-start;flex-direction:column; } }
+@media(max-width:600px) { .collage-studio { padding:24px 14px 36px; }.collage-heading h2 { font-size:23px; }.collage-workspace { display:flex;flex-direction:column;gap:18px; }.collage-board { order:0;width:100%; }.collage-sources { order:1;width:100%; }.collage-tools { order:2;width:100%; }.collage-source-list { grid-template-columns:repeat(2,minmax(0,1fr)); }.collage-source-select { flex-direction:column;align-items:flex-start; }.collage-source-select img { width:100%;height:84px; }.collage-modal-backdrop { padding:10px; }.collage-modal { padding:14px; }.collage-actions { width:100%; }.collage-actions>* { flex:1; }.collage-studio .journal-button { min-height:44px; } }

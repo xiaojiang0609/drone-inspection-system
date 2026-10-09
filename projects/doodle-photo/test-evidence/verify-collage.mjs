@@ -1,0 +1,230 @@
+import { createRequire } from 'node:module'
+import { readFile, mkdir } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import assert from 'node:assert/strict'
+import { verifyMatrix, verifyLive } from './verify-collage-matrix.mjs'
+const require = createRequire('C:/Users/xiaojiang/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/package.json')
+const { chromium } = require('playwright')
+const args = process.argv.slice(2)
+if (args.some(arg => !['--mock-only','--live','--range-only'].includes(arg)) || args.filter(arg => ['--mock-only','--live'].includes(arg)).length !== 1 || args.includes('--live') && args.includes('--range-only')) throw new Error('Choose exactly --mock-only or --live; --range-only is mock-only')
+if (args.includes('--live')) {
+ await verifyLive(chromium)
+ process.exit(0)
+}
+const base = new URL('./collage-fixtures/', import.meta.url)
+const file = name => fileURLToPath(new URL(name, base))
+const png = await readFile(file('cutout.png'))
+const browser = await chromium.launch({ headless: true, channel: 'msedge' })
+try {
+ const page = await browser.newPage({ viewport: { width: 1200, height: 1100 }, acceptDownloads: true })
+ const errors = [], requests = []
+ let holdNext=false,releaseHeld=null,heldRequest=null,failAutomatic=false
+ const waitForHeld=async()=>{for(let i=0;i<300 && !heldRequest;i++)await new Promise(r=>setTimeout(r,10));assert.ok(heldRequest,'mock request reached held boundary')}
+ page.on('pageerror', e => errors.push(e.message))
+ await page.route('**/api/**', async route => {
+  const path=new URL(route.request().url()).pathname
+  if(path==='/api/analyze'){await route.fulfill({contentType:'application/json',body:JSON.stringify({status:'success',data:[{label:'范围不可用的主体',caption:'保留照片',shape_points:[]}],theme:'其他',decorations:[]})});return}
+  assert.equal(path, '/api/cutout')
+  const body = route.request().postDataBuffer().toString('utf8')
+  const explicit = body.match(/name="subject"\r\n\r\n([\s\S]*?)\r\n--/)
+  const subject = explicit ? JSON.parse(explicit[1]) : {label:'测试餐点',box_2d:[100,100,900,900],segmentation_regions:[{box_2d:[100,100,900,900],positive_points:[[500,500]],negative_points:[]}]}
+  requests.push(subject)
+  if(failAutomatic && !explicit){await route.fulfill({status:422,contentType:'application/json',body:JSON.stringify({detail:'测试：没有确认主体，请手动纠正'})});return}
+  if(holdNext){holdNext=false;heldRequest=subject;await new Promise(resolve=>{releaseHeld=resolve})}
+  try {await route.fulfill({contentType:'application/json',body:JSON.stringify({status:'success',data:{image:'data:image/png;base64,'+png.toString('base64'),width:110,height:85,original_width:body.includes('exif-6.jpg')?240:180,original_height:body.includes('exif-6.jpg')?360:120,subject,crop_box:[0,0,110,85],caption:'把好心情收藏',theme:'美食',emotion:'治愈',quality:subject.segmentation_regions.map(()=>({outline_ready:true})),contours:[]}})})} catch(error){if(!/closed|cancel|invalid|intercept|handled/i.test(error.message))throw error}
+ })
+ const verifyRangeUndo = async () => {
+  const results=[]
+  for(const name of ['旋转拼贴元素','描边宽度']) {
+   await page.goto(process.env.COLLAGE_URL || 'http://127.0.0.1:8879/')
+   await page.getByTestId('mode-collage').click()
+   if(name==='描边宽度') {
+    await page.getByTestId('collage-upload').setInputFiles(file('source-1.png'))
+    await page.locator('[data-element-type="imageSticker"]').waitFor()
+   }
+   const textElements=page.locator('[data-element-type="text"]')
+   const previousCount=await textElements.count()
+   await page.getByRole('button',{name:'添加短句',exact:true}).click()
+   if(name==='描边宽度')await page.getByRole('button',{name:'选择source-1.png',exact:true}).click()
+   const range=page.getByRole('slider',{name,exact:true})
+   await range.focus();await page.keyboard.press('Tab')
+   await page.getByTestId('collage-undo').click()
+   results.push({range:name,before:previousCount+1,afterFirst:await textElements.count(),expected:previousCount})
+  }
+  console.log('range Tab Undo results: '+JSON.stringify(results))
+  for(const result of results)assert.equal(result.afterFirst,result.expected,result.range+' Tab navigation must not swallow the preceding text Undo')
+  // Repeated change keys are one keyboard adjustment, even if focus leaves
+  // before keyup. Modifier/navigation keys alone create no transaction.
+  await page.goto(process.env.COLLAGE_URL || 'http://127.0.0.1:8879/')
+  await page.getByTestId('mode-collage').click()
+  await page.getByRole('button',{name:'添加短句',exact:true}).click()
+  const rotation=page.getByRole('slider',{name:'旋转拼贴元素',exact:true})
+  await rotation.focus()
+  await page.keyboard.press('Control');await page.keyboard.press('Shift')
+  await page.keyboard.down('ArrowRight');await page.keyboard.down('ArrowRight');await page.keyboard.down('ArrowRight')
+  assert.equal(await rotation.inputValue(),'3')
+  await page.getByTestId('collage-undo').focus()
+  await page.keyboard.up('ArrowRight')
+  await page.getByTestId('collage-undo').click()
+  assert.equal(await rotation.inputValue(),'0','blur commits repeated keyboard adjustment once')
+  assert.equal(await page.locator('[data-element-type="text"]').count(),1)
+  await page.getByTestId('collage-undo').click()
+  assert.equal(await page.locator('[data-element-type="text"]').count(),0,'following Undo removes prior text once')
+  assert.deepEqual(errors,[])
+ }
+ await verifyRangeUndo()
+ if(process.argv.includes('--range-only'))console.log('PASS range navigation and keyboard Undo regression')
+ else {
+ await page.goto(process.env.COLLAGE_URL || 'http://127.0.0.1:8879/')
+ assert.equal(await page.locator('input[type=file]').count(),1,'default single mode keeps one file picker')
+ await page.getByTestId('mode-collage').click({timeout:3000})
+ await page.getByTestId('collage-upload').setInputFiles([file('source-1.png'),file('source-2.png')])
+ await page.locator('[data-element-type="imageSticker"]').first().waitFor()
+ await page.waitForFunction(()=>document.querySelector('[data-testid="collage-status"]').textContent.includes('2 张'))
+ const elements = () => page.locator('[data-testid="collage-element"]')
+ const before = await elements().count()
+ await page.getByTestId('mode-single').click()
+ await page.getByTestId('mode-collage').click()
+ assert.equal(await elements().count(),before,'mode_switch_preserves_completed_project')
+ const sticker = page.locator('[data-element-type="imageSticker"]').first()
+ const position = await sticker.getAttribute('data-x')
+ const bounds = await sticker.boundingBox()
+ await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/2)
+ await page.mouse.down(); await page.mouse.move(bounds.x+bounds.width/2+24,bounds.y+bounds.height/2+20,{steps:4}); await page.mouse.up()
+ assert.notEqual(await sticker.getAttribute('data-x'),position)
+ await page.getByTestId('collage-undo').click()
+ assert.equal(await sticker.getAttribute('data-x'),position,'drag undo exactly once')
+ // A cancelled pointer preview restores geometry without spending history.
+ const cancelBounds = await sticker.boundingBox()
+ await page.mouse.move(cancelBounds.x+cancelBounds.width/2,cancelBounds.y+cancelBounds.height/2)
+ await page.mouse.down();await page.mouse.move(cancelBounds.x+cancelBounds.width/2+18,cancelBounds.y+cancelBounds.height/2+12)
+ await page.getByTestId('collage-canvas').dispatchEvent('pointercancel',{pointerId:1,pointerType:'touch'})
+ await page.mouse.up()
+ assert.equal(await sticker.getAttribute('data-x'),position,'pointercancel restores geometry')
+ // Undo during an unfinished drag cancels just that preview.
+ await page.mouse.move(cancelBounds.x+cancelBounds.width/2,cancelBounds.y+cancelBounds.height/2)
+ await page.mouse.down();await page.mouse.move(cancelBounds.x+cancelBounds.width/2+18,cancelBounds.y+cancelBounds.height/2+12)
+ await page.getByTestId('collage-undo').dispatchEvent('click')
+ await page.mouse.up()
+ assert.equal(await page.locator('[data-element-type="imageSticker"]').count(),2,'undo during preview retains completed project')
+ assert.equal(await sticker.getAttribute('data-x'),position,'undo cancels only transient movement')
+ const title = page.locator('[data-element-role="title"]')
+ await title.click()
+ const oldText = await page.getByTestId('collage-text').inputValue()
+ await page.getByTestId('collage-text').fill('我的拼贴日记')
+ await page.getByTestId('collage-text').press('Tab')
+ assert.equal(await title.getAttribute('data-text'),'我的拼贴日记')
+ await page.getByTestId('collage-undo').click()
+ assert.equal(await title.getAttribute('data-text'),oldText,'text edit undo exactly once')
+ // Clicking a sticker after typing must finish text before a new drag starts.
+ await page.getByTestId('collage-text').fill('输入后直接拖贴纸')
+ const textDragBounds=await sticker.boundingBox()
+ await page.mouse.move(textDragBounds.x+textDragBounds.width/2,textDragBounds.y+textDragBounds.height/2)
+ await page.mouse.down();await page.mouse.move(textDragBounds.x+textDragBounds.width/2+18,textDragBounds.y+textDragBounds.height/2+10);await page.mouse.up()
+ await page.getByTestId('collage-undo').click()
+ assert.equal(await title.getAttribute('data-text'),'输入后直接拖贴纸','drag after text preserves its independent text commit')
+ await page.getByTestId('collage-undo').click()
+ assert.equal(await title.getAttribute('data-text'),oldText)
+ // Closing a modal keeps its valid correction running; a later drag must
+ // merge geometry into the latest corrected element, preserving its asset.
+ const oldAsset=await sticker.getAttribute('data-asset-id')
+ holdNext=true;heldRequest=null
+ await page.locator('[data-testid="collage-source"]').filter({hasText:'source-1.png'}).getByRole('button',{name:'纠正主体',exact:true}).click()
+ await page.getByTestId('collage-correction-submit').click();await waitForHeld()
+ await page.getByTestId('correction-close').click()
+ const raceBounds=await sticker.boundingBox()
+ await page.mouse.move(raceBounds.x+raceBounds.width/2,raceBounds.y+raceBounds.height/2);await page.mouse.down()
+ await page.mouse.move(raceBounds.x+raceBounds.width/2+12,raceBounds.y+raceBounds.height/2+10)
+ releaseHeld()
+ await page.waitForFunction(old=>document.querySelector('[data-element-type="imageSticker"]').getAttribute('data-asset-id')!==old,oldAsset)
+ const newAsset=await sticker.getAttribute('data-asset-id')
+ await page.mouse.move(raceBounds.x+raceBounds.width/2+24,raceBounds.y+raceBounds.height/2+20);await page.mouse.up()
+ assert.equal(await sticker.getAttribute('data-asset-id'),newAsset,'drag preserves async correction asset')
+ await page.getByTestId('collage-undo').click()
+ assert.equal(await sticker.getAttribute('data-asset-id'),newAsset,'gesture undo preserves independent correction')
+ assert.equal(await sticker.getAttribute('data-x'),position)
+ await page.getByTestId('collage-undo').click()
+ assert.equal(await sticker.getAttribute('data-asset-id'),oldAsset,'next undo restores prior asset')
+ await page.getByTestId('collage-upload').setInputFiles(file('exif-6.jpg'))
+ await page.locator('[data-testid="collage-source"]').filter({hasText:'exif-6.jpg'}).getByRole('button',{name:'纠正主体',exact:true}).click()
+ await page.getByTestId('correction-photo').waitFor()
+ assert.deepEqual(await page.getByTestId('correction-photo').evaluate(i=>[i.naturalWidth,i.naturalHeight]),[240,360],'original full EXIF oriented dimensions')
+ const stage = await page.getByTestId('correction-stage').boundingBox()
+ await page.mouse.move(stage.x+stage.width*.2,stage.y+stage.height*.3); await page.mouse.down(); await page.mouse.move(stage.x+stage.width*.8,stage.y+stage.height*.9); await page.mouse.up()
+ await page.getByTestId('collage-correction-submit').click()
+ await page.waitForFunction(()=>document.querySelector('[data-testid="collage-correction-status"]').textContent.includes('已更新'))
+ assert.deepEqual(requests.at(-1).box_2d.map(Math.round),[300,200,900,800],'manual_correction_uses_original_exif_coordinates')
+ await page.getByTestId('correction-close').click()
+ await page.getByTestId('collage-background-upload').setInputFiles(file('source-3.png'))
+ await page.getByTestId('collage-background-tool').click()
+ const board = await page.getByTestId('collage-canvas').boundingBox()
+ await page.mouse.move(board.x+board.width*.5,board.y+board.height*.5); await page.mouse.down(); await page.mouse.move(board.x+board.width*.65,board.y+board.height*.5); await page.mouse.up()
+ const offset = await page.getByTestId('collage-canvas').getAttribute('data-offset-x')
+ assert.notEqual(Number(offset),.5)
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))
+ const previewPng=await page.locator('[data-testid="collage-canvas"] canvas').evaluate(c=>c.toDataURL().split(',')[1])
+ const downloadPromise = page.waitForEvent('download')
+ await page.getByTestId('collage-export').click()
+ const download = await downloadPromise
+ const output = new URL('./collage-ui-export.png',import.meta.url)
+ await download.saveAs(fileURLToPath(output))
+ const bytes = await readFile(output)
+ assert.deepEqual(bytes,Buffer.from(previewPng,'base64'),'Canvas preview equals export without controls')
+ assert.equal(bytes.readUInt32BE(16),1080); assert.equal(bytes.readUInt32BE(20),1440)
+ assert.equal(await page.getByTestId('collage-canvas').getAttribute('data-offset-x'),offset,'background_cover_offset_survives_export')
+ await mkdir(fileURLToPath(new URL('./collage-ui/',import.meta.url)),{recursive:true})
+ await page.screenshot({path:fileURLToPath(new URL('./collage-ui/desktop.png',import.meta.url)),fullPage:true})
+ await page.setViewportSize({width:390,height:844})
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'no narrow horizontal overflow')
+ await page.screenshot({path:fileURLToPath(new URL('./collage-ui/mobile.png',import.meta.url)),fullPage:true})
+ // Actual Chromium touch input, plus pointer cancellation, on narrow UI.
+ await page.getByRole('button',{name:'移动元素',exact:true}).click()
+ await sticker.scrollIntoViewIfNeeded()
+ const touchRect=await sticker.boundingBox(), touchX=touchRect.x+touchRect.width/2,touchY=touchRect.y+touchRect.height/2
+ const touchBefore=await sticker.getAttribute('data-x')
+ const cdp=await page.context().newCDPSession(page)
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:touchX,y:touchY}]})
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:touchX+15,y:touchY+12}]})
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]})
+ assert.equal(await sticker.getAttribute('data-x'),touchBefore,'touch cancellation restores draft')
+ await cdp.detach()
+ // Auto failure is honest, and original-photo manual correction can create
+ // the first usable asset. The modal traps focus and Escape restores it.
+ await page.reload();await page.getByTestId('mode-collage').click()
+ failAutomatic=true
+ await page.getByTestId('collage-upload').setInputFiles(file('source-1.png'))
+ await page.waitForFunction(()=>document.querySelector('[data-testid="collage-source"]')?.getAttribute('data-source-status')==='failed')
+ assert.match(await page.getByTestId('collage-status').textContent(),/没有可用贴纸/)
+ assert.equal(await page.locator('[data-element-type="imageSticker"]').count(),0)
+ const manualButton=page.locator('[data-testid="collage-source"]').getByRole('button',{name:'纠正主体',exact:true})
+ await manualButton.click();await page.getByTestId('collage-correction-dialog').waitFor()
+ assert.equal(await page.evaluate(()=>document.body.style.overflow),'hidden')
+ await page.getByTestId('correction-close').focus();await page.keyboard.press('Shift+Tab')
+ assert.equal(await page.evaluate(()=>!!document.activeElement.closest('[role=dialog]')),true,'modal focus stays inside')
+ await page.keyboard.press('Escape')
+ assert.equal(await manualButton.evaluate(e=>e===document.activeElement),true,'Escape restores opener focus')
+ assert.notEqual(await page.evaluate(()=>document.body.style.overflow),'hidden')
+ await manualButton.click();await page.getByTestId('collage-correction-submit').click()
+ await page.waitForFunction(()=>document.querySelector('[data-testid="collage-correction-status"]').textContent.includes('已更新'))
+ await page.getByTestId('correction-close').click()
+ assert.equal(await page.locator('[data-element-type="imageSticker"]').count(),1,'manual correction creates first good asset')
+ // Mode inactivity cancels pending processing while preserving good stickers.
+ failAutomatic=false;holdNext=true;heldRequest=null
+ await page.getByTestId('collage-upload').setInputFiles(file('source-2.png'));await waitForHeld()
+ await page.getByTestId('mode-single').click();releaseHeld()
+ await page.getByTestId('mode-collage').click()
+ await page.waitForFunction(()=>[...document.querySelectorAll('[data-testid="collage-source"]')].some(e=>e.getAttribute('data-source-status')==='paused'))
+ assert.equal(await page.locator('[data-element-type="imageSticker"]').count(),1)
+ assert.match(await page.getByTestId('collage-status').textContent(),/1 张贴纸可用/)
+ // The extracted legacy panel retains the original missing-range fallback.
+ await page.reload()
+ await page.locator('input[type=file]').setInputFiles(file('source-1.png'))
+ await page.getByTestId('subject-correction-open').click()
+ await page.getByTestId('subject-correction-dialog').waitFor({timeout:3000})
+ assert.match(await page.getByTestId('subject-correction-dialog').textContent(),/没有可用范围/)
+ await page.getByTestId('correction-close').click()
+ assert.deepEqual(errors,[])
+ console.log('PASS collage basic mock browser: mode preservation, EXIF correction, grouped drag/text/preview undo, async correction rebase, exact preview/export, photo crop, touch cancel, manual recovery, focus/Escape, inactive pause, narrow fit; API calls='+requests.length)
+ await verifyMatrix(browser)
+ }
+} finally { await browser.close() }

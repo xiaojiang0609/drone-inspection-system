@@ -1,0 +1,130 @@
+{
+  "slots": {
+    "accepted": 16,
+    "failedStillConsumesSlot": true,
+    "seventeenthRejected": true,
+    "removedFailureReleasesSlot": true,
+    "backgroundSeparate": true
+  },
+  "failures": {
+    "mixedReady": 2,
+    "mixedFailed": 1,
+    "allFailed": 3
+  },
+  "sameNamesIndependent": true,
+  "formats": {
+    "apngRejected": true,
+    "animatedWebpRejected": true,
+    "corruptRejected": true,
+    "over40MPRejected": true,
+    "over20MiBRejected": true,
+    "mimeMismatchRejected": true,
+    "wideTallStaticWebpAccepted": true
+  },
+  "queueCancellation": {
+    "maxHeldRequests": 2,
+    "queuedNeverStarted": true,
+    "pausedAndRetried": true
+  },
+  "cancelLateRetry": {
+    "boundary": "actual asset-store Image.decode",
+    "oldPng": [
+      110,
+      85
+    ],
+    "newPng": [
+      160,
+      120
+    ],
+    "newReadyBeforeOldRelease": true,
+    "obsoleteAssetRegistered": true,
+    "assetIdRetained": true,
+    "captionRetained": true,
+    "differentChannels": 0
+  },
+  "uiBorderStylesDistinct": true,
+  "backgroundPixels": {
+    "paper-dark": {
+      "width": 1080,
+      "height": 1440,
+      "differentChannels": 0,
+      "maxDelta": 0
+    },
+    "paper-light": {
+      "width": 1080,
+      "height": 1440,
+      "differentChannels": 0,
+      "maxDelta": 0
+    },
+    "solid": {
+      "width": 1080,
+      "height": 1440,
+      "differentChannels": 0,
+      "maxDelta": 0
+    },
+    "photo": {
+      "width": 1080,
+      "height": 1440,
+      "differentChannels": 0,
+      "maxDelta": 0
+    }
+  },
+  "renderer": {
+    "holes": [
+      [
+        32,
+        48,
+        64,
+        255
+      ],
+      [
+        32,
+        48,
+        64,
+        255
+      ],
+      [
+        32,
+        48,
+        64,
+        255
+      ]
+    ],
+    "pieces": [
+      [
+        108,
+        155,
+        113,
+        255
+      ],
+      [
+        108,
+        155,
+        113,
+        255
+      ],
+      [
+        108,
+        155,
+        113,
+        255
+      ]
+    ],
+    "bg": [
+      32,
+      48,
+      64,
+      255
+    ],
+    "solidWhite": 2684,
+    "dashedWhite": 2280,
+    "noneWhite": 0,
+    "styleDifferent": 458,
+    "waited": true,
+    "releasedBefore": 0,
+    "releasedAfter": 1,
+    "frozenDifferent": 0
+  },
+  "pageErrors": [],
+  "mockRequests": 35
+}

@@ -1,0 +1,172 @@
+{
+  "mode": "real",
+  "photos": [
+    "coffee.jpg",
+    "cat.jpg",
+    "buffet.jpg"
+  ],
+  "health": {
+    "api_configured": true,
+    "sam_loaded": true
+  },
+  "status": "3 张贴纸可用",
+  "manualSAMCorrection": "coffee.jpg positive point, updated",
+  "pixels": {
+    "width": 1080,
+    "height": 1440,
+    "differentChannels": 0,
+    "maxDelta": 0
+  },
+  "requestFacts": [
+    {
+      "name": "coffee.jpg",
+      "manual": false,
+      "positivePoints": 0
+    },
+    {
+      "name": "cat.jpg",
+      "manual": false,
+      "positivePoints": 0
+    },
+    {
+      "name": "buffet.jpg",
+      "manual": false,
+      "positivePoints": 0
+    },
+    {
+      "name": "coffee.jpg",
+      "manual": true,
+      "positivePoints": 1
+    }
+  ],
+  "calls": [
+    {
+      "name": "coffee.jpg",
+      "manual": false,
+      "http": 200,
+      "elapsedMs": 10278,
+      "width": 497,
+      "height": 399,
+      "originalWidth": 900,
+      "originalHeight": 1350,
+      "label": "咖啡杯",
+      "quality": [
+        {
+          "candidate_index": 3,
+          "score": 0.8877847194671631,
+          "stability": 0.7325487012987013,
+          "outside_fraction": 0,
+          "expanded_outside_fraction": 0,
+          "quality_score": 0.8179285112913554,
+          "area": 104480,
+          "rejected_candidates": [
+            {
+              "index": 0,
+              "reason": "point_mismatch"
+            },
+            {
+              "index": 1,
+              "reason": "point_mismatch"
+            },
+            {
+              "index": 2,
+              "reason": "point_mismatch"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cat.jpg",
+      "manual": false,
+      "http": 200,
+      "elapsedMs": 10967,
+      "width": 474,
+      "height": 619,
+      "originalWidth": 1000,
+      "originalHeight": 683,
+      "label": "小猫",
+      "quality": [
+        {
+          "candidate_index": 1,
+          "score": 0.9559471011161804,
+          "stability": 0.8770753761010212,
+          "outside_fraction": 0.0002360027870805803,
+          "expanded_outside_fraction": 0,
+          "quality_score": 0.9203958241625887,
+          "area": 177964,
+          "rejected_candidates": [
+            {
+              "index": 0,
+              "reason": "unstable_mask"
+            },
+            {
+              "index": 2,
+              "reason": "unstable_mask"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "buffet.jpg",
+      "manual": false,
+      "http": 200,
+      "elapsedMs": 12094,
+      "width": 195,
+      "height": 531,
+      "originalWidth": 1707,
+      "originalHeight": 1280,
+      "label": "黑色花瓶",
+      "quality": [
+        {
+          "candidate_index": 3,
+          "score": 0.9606678485870361,
+          "stability": 0.9224627022483715,
+          "outside_fraction": 0,
+          "expanded_outside_fraction": 0,
+          "quality_score": 0.9434755327346371,
+          "area": 58089,
+          "rejected_candidates": []
+        }
+      ]
+    },
+    {
+      "name": "coffee.jpg",
+      "manual": true,
+      "http": 200,
+      "elapsedMs": 7185,
+      "width": 497,
+      "height": 399,
+      "originalWidth": 900,
+      "originalHeight": 1350,
+      "label": "咖啡杯",
+      "quality": [
+        {
+          "candidate_index": 3,
+          "score": 0.8877606391906738,
+          "stability": 0.7325487012987013,
+          "outside_fraction": 0,
+          "expanded_outside_fraction": 0,
+          "quality_score": 0.8179152671392862,
+          "area": 104479,
+          "rejected_candidates": [
+            {
+              "index": 0,
+              "reason": "point_mismatch"
+            },
+            {
+              "index": 1,
+              "reason": "point_mismatch"
+            },
+            {
+              "index": 2,
+              "reason": "point_mismatch"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "pageErrors": []
+}
